@@ -10,5 +10,5 @@ def get_tree_sitter_languages_lib():
 def walk(directory: str, ext: str):
     for root, _, files in os.walk(directory):
         for f in files:
-            if f.endswith('.' + ext):
+            if f.endswith(f'.{ext}'):
                 yield os.path.join(root, f)

@@ -56,13 +56,10 @@ def code_document_as_json(code_document: models.CodeDocument) -> Dict[str, Any]:
 
 def code_documents_with_distances_as_json(
         code_documents_with_distances: List[Tuple[float, models.CodeDocument]]) -> List[Dict[str, Any]]:
-    code_documents = []
-    for distance, code_document in code_documents_with_distances:
-        code_documents.append({
-            'distance': distance,
-            **code_document_as_json(code_document)
-        })
-    return code_documents
+    return [
+        {'distance': distance, **code_document_as_json(code_document)}
+        for distance, code_document in code_documents_with_distances
+    ]
 
 
 def get_filterless_query(query):
@@ -129,7 +126,7 @@ def api_repository_search_view(request, repository_organization, repository_name
     if language_filter_match is not None:
         languages_match = language_filter_match.group(1).split(',')
         languages = [language.lower() for language in languages_match if language.lower() in repository_languages]
-        if len(languages) == 0:
+        if not languages:
             return HttpResponseBadRequest('No valid languages present in the +language filter.')
     else:
         languages = repository_languages

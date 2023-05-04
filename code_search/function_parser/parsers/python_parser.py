@@ -8,14 +8,16 @@ class PythonParser(LanguageParser):
     @staticmethod
     def __get_docstring_node(function_node):
         block_nodes = [node for node in function_node.children if node.type == 'block']
-        if len(block_nodes) == 0:
+        if not block_nodes:
             return
 
         block_node = block_nodes[0]
-        docstring_node = [node for node in block_node.children if
-                          node.type == 'expression_statement' and node.children[0].type == 'string']
-
-        if len(docstring_node) > 0:
+        if docstring_node := [
+            node
+            for node in block_node.children
+            if node.type == 'expression_statement'
+            and node.children[0].type == 'string'
+        ]:
             return docstring_node[0].children[0]
 
         return None
@@ -73,11 +75,8 @@ class PythonParser(LanguageParser):
     def is_function_empty(function_node) -> bool:
         seen_header_end = False
         for child in function_node.children:
-            if seen_header_end and (child.type == 'pass_statement' or child.type == 'raise_statement'):
-                return True
-            elif seen_header_end:
-                return False
-
+            if seen_header_end:
+                return child.type in ['pass_statement', 'raise_statement']
             if child.type == ':':
                 seen_header_end = True
         return False
@@ -89,8 +88,9 @@ class PythonParser(LanguageParser):
                 continue
             function_metadata = PythonParser.get_function_metadata(function_node, blob)
             if func_identifier_scope is not None:
-                function_metadata['identifier'] = '{}.{}'.format(func_identifier_scope,
-                                                                 function_metadata['identifier'])
+                function_metadata[
+                    'identifier'
+                ] = f"{func_identifier_scope}.{function_metadata['identifier']}"
 
             docstring_node = PythonParser.__get_docstring_node(function_node)
             function_metadata['docstring'] = PythonParser.get_docstring(docstring_node, blob)
@@ -107,7 +107,7 @@ class PythonParser(LanguageParser):
         for child in node.children:
             if child.type == 'function_definition':
                 yield child
-            elif child.type == 'decorated_definition' or child.type == 'block':
+            elif child.type in ['decorated_definition', 'block']:
                 for c in child.children:
                     if c.type == 'function_definition':
                         yield c

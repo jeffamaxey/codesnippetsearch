@@ -55,7 +55,7 @@ def evaluate_mrr(model: CodeSearchNN,
                  device: torch.device,
                  batch_size: int = 1000):
     mrrs_per_language = {}
-    for language in language_code_seqs.keys():
+    for language in language_code_seqs:
         code_seqs = np_to_torch(language_code_seqs[language], device)
         query_seqs = np_to_torch(language_query_seqs[language], device)
         mrrs_per_language[language] = get_language_mrrs(model, language, code_seqs, query_seqs, batch_size=batch_size)
@@ -70,16 +70,19 @@ def ndcg(predictions: Dict[str, List[str]], relevance_scores: Dict[str, Dict[str
     ndcg_sum = 0
 
     for query, query_relevance_annotations in relevance_scores.items():
-        current_rank = 1
-        query_dcg = 0
-        for url in predictions[query]:
-            if url in query_relevance_annotations:
-                query_dcg += (2**query_relevance_annotations[url] - 1) / np.log2(current_rank + 1)
-            current_rank += 1
-
-        query_idcg = 0
-        for i, ideal_relevance in enumerate(sorted(query_relevance_annotations.values(), reverse=True), start=1):
-            query_idcg += (2 ** ideal_relevance - 1) / np.log2(i + 1)
+        query_dcg = sum(
+            (2 ** query_relevance_annotations[url] - 1)
+            / np.log2(current_rank + 1)
+            for current_rank, url in enumerate(predictions[query], start=1)
+            if url in query_relevance_annotations
+        )
+        query_idcg = sum(
+            (2**ideal_relevance - 1) / np.log2(i + 1)
+            for i, ideal_relevance in enumerate(
+                sorted(query_relevance_annotations.values(), reverse=True),
+                start=1,
+            )
+        )
         if query_idcg == 0:
             # We have no positive annotations for the given query, so we should probably not penalize anyone about this.
             continue
@@ -112,32 +115,42 @@ def get_ndcg_predictions(
                 preprocessing_tokens.preprocess_query_tokens)
             query_embeddings = torch_gpu_to_np(model.encode_query(np_to_torch(query_seqs, device)))
 
-        if nn_lib == 'scikit':
-            nn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine', n_jobs=-1)
-            nn.fit(data_manager.get_language_code_embeddings(language))
-            _, nearest_neighbor_indices_per_query = nn.kneighbors(query_embeddings)
-
-            for query_idx, query in enumerate(queries):
-                for query_nearest_code_idx in nearest_neighbor_indices_per_query[query_idx, :]:
-                    predictions.append({
-                        'query': query,
-                        'language': language,
-                        'identifier': evaluation_docs[query_nearest_code_idx]['identifier'],
-                        'url': evaluation_docs[query_nearest_code_idx]['url'],
-                    })
-        elif nn_lib == 'annoy':
+        if nn_lib == 'annoy':
             annoy_index = data_manager.get_language_annoy_index(get_annoy_index(query_embeddings.shape[1]), language)
             for query_idx, query in enumerate(queries):
                 nearest_neighbor_indices = annoy_index.get_nns_by_vector(
                     query_embeddings[query_idx, :], n_neighbors, search_k=search_k)
 
-                for query_nearest_code_idx in nearest_neighbor_indices:
-                    predictions.append({
+                predictions.extend(
+                    {
                         'query': query,
                         'language': language,
-                        'identifier': evaluation_docs[query_nearest_code_idx]['identifier'],
+                        'identifier': evaluation_docs[query_nearest_code_idx][
+                            'identifier'
+                        ],
                         'url': evaluation_docs[query_nearest_code_idx]['url'],
-                    })
+                    }
+                    for query_nearest_code_idx in nearest_neighbor_indices
+                )
+        elif nn_lib == 'scikit':
+            nn = NearestNeighbors(n_neighbors=n_neighbors, metric='cosine', n_jobs=-1)
+            nn.fit(data_manager.get_language_code_embeddings(language))
+            _, nearest_neighbor_indices_per_query = nn.kneighbors(query_embeddings)
+
+            for query_idx, query in enumerate(queries):
+                predictions.extend(
+                    {
+                        'query': query,
+                        'language': language,
+                        'identifier': evaluation_docs[query_nearest_code_idx][
+                            'identifier'
+                        ],
+                        'url': evaluation_docs[query_nearest_code_idx]['url'],
+                    }
+                    for query_nearest_code_idx in nearest_neighbor_indices_per_query[
+                        query_idx, :
+                    ]
+                )
         else:
             raise Exception('Unknown nearest neighbors library.')
 

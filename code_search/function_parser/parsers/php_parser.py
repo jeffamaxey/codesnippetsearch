@@ -14,7 +14,7 @@ class PhpParser(LanguageParser):
     @staticmethod
     def get_docstring(trait_node, blob: str, idx: int) -> str:
         docstring = ''
-        if idx - 1 >= 0 and trait_node.children[idx - 1].type == 'comment':
+        if idx >= 1 and trait_node.children[idx - 1].type == 'comment':
             docstring = match_from_span(trait_node.children[idx - 1], blob)
             docstring = strip_c_style_comment_delimiters(docstring)
         return docstring
@@ -22,7 +22,7 @@ class PhpParser(LanguageParser):
     @staticmethod
     def get_declarations(declaration_node, blob: str, node_type: str) -> List[Dict[str, Any]]:
         declaration_lists = [child for child in declaration_node.children if child.type == 'declaration_list']
-        if len(declaration_lists) == 0:
+        if not declaration_lists:
             return []
         declaration_list = declaration_lists[0]
         declaration_name = PhpParser.get_declaration_name(declaration_node, blob)
@@ -34,17 +34,19 @@ class PhpParser(LanguageParser):
                 docstring_summary = get_docstring_summary(docstring)
                 metadata = PhpParser.get_function_metadata(child, blob)
 
-                declarations.append({
-                    'type': child.type,
-                    'identifier': '{}.{}'.format(declaration_name, metadata['identifier']),
-                    'parameters': metadata['parameters'],
-                    'function': match_from_span(child, blob),
-                    'function_tokens': tokenize_code(child, blob),
-                    'docstring': docstring,
-                    'docstring_summary': docstring_summary,
-                    'start_point': child.start_point,
-                    'end_point': child.end_point
-                })
+                declarations.append(
+                    {
+                        'type': child.type,
+                        'identifier': f"{declaration_name}.{metadata['identifier']}",
+                        'parameters': metadata['parameters'],
+                        'function': match_from_span(child, blob),
+                        'function_tokens': tokenize_code(child, blob),
+                        'docstring': docstring,
+                        'docstring_summary': docstring_summary,
+                        'start_point': child.start_point,
+                        'end_point': child.end_point,
+                    }
+                )
 
         return declarations
 
@@ -61,13 +63,18 @@ class PhpParser(LanguageParser):
 
     @staticmethod
     def get_declaration_name(declaration_node, blob: str):
-        for child in declaration_node.children:
-            if child.type == 'name':
-                return match_from_span(child, blob)
-        return ''
+        return next(
+            (
+                match_from_span(child, blob)
+                for child in declaration_node.children
+                if child.type == 'name'
+            ),
+            '',
+        )
 
     @staticmethod
     def get_function_metadata(function_node, blob: str) -> Dict[str, str]:
-        metadata = {'identifier': match_from_span(function_node.children[1], blob),
-                    'parameters': match_from_span(function_node.children[2], blob)}
-        return metadata
+        return {
+            'identifier': match_from_span(function_node.children[1], blob),
+            'parameters': match_from_span(function_node.children[2], blob),
+        }

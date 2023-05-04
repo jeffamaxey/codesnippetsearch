@@ -44,12 +44,11 @@ class JavascriptParser(LanguageParser):
         method_nodes = []
         traverse_type(tree.root_node, method_nodes, 'method_definition')
 
-        for declaration in function_nodes + method_nodes:
-            if declaration.children is None or len(declaration.children) == 0:
-                continue
-
-            functions.append((declaration, JavascriptParser.get_docstring(tree, declaration, blob)))
-
+        functions.extend(
+            (declaration, JavascriptParser.get_docstring(tree, declaration, blob))
+            for declaration in function_nodes + method_nodes
+            if declaration.children is not None and len(declaration.children) != 0
+        )
         definitions = []
         for function_node, docstring in functions:
             metadata = JavascriptParser.get_function_metadata(function_node, blob)

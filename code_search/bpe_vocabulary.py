@@ -89,7 +89,7 @@ class BpeVocabulary(typing.Sized):
         for token in {self.SOW, self.EOW}:
             vocab[token] = int(2 ** 63)
         for idx, byte_pair_count in enumerate(self.byte_pair_counts(words)):
-            vocab.update(byte_pair_count)
+            vocab |= byte_pair_count
             if (idx + 1) % 10000 == 0:
                 self.trim_vocab(10 * self.bpe_vocab_size, vocab)
 
@@ -203,12 +203,12 @@ class BpeVocabulary(typing.Sized):
 
                 elif idx in self.inverse_bpe_vocab:
                     if self.strict:
-                        raise ValueError("Found BPE index {} when not rebuilding word!".format(idx))
+                        raise ValueError(f"Found BPE index {idx} when not rebuilding word!")
                     else:
                         words.append(self.inverse_bpe_vocab[idx])
 
                 else:
-                    raise ValueError("Got index {} that was not in word or BPE vocabs!".format(idx))
+                    raise ValueError(f"Got index {idx} that was not in word or BPE vocabs!")
 
             yield ' '.join(w for w in words if w != '')
 

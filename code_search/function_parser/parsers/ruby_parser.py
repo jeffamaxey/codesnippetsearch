@@ -28,17 +28,19 @@ class RubyParser(LanguageParser):
                 if metadata['identifier'] in RubyParser.BLACKLISTED_FUNCTION_NAMES:
                     continue
 
-                definitions.append({
-                    'type': 'class',
-                    'identifier': '{}.{}'.format(module_or_class_name, metadata['identifier']),
-                    'parameters': metadata['parameters'],
-                    'function': match_from_span(child, blob),
-                    'function_tokens': tokenize_code(child, blob),
-                    'docstring': docstring,
-                    'docstring_summary': docstring_summary,
-                    'start_point': child.start_point,
-                    'end_point': child.end_point
-                })
+                definitions.append(
+                    {
+                        'type': 'class',
+                        'identifier': f"{module_or_class_name}.{metadata['identifier']}",
+                        'parameters': metadata['parameters'],
+                        'function': match_from_span(child, blob),
+                        'function_tokens': tokenize_code(child, blob),
+                        'docstring': docstring,
+                        'docstring_summary': docstring_summary,
+                        'start_point': child.start_point,
+                        'end_point': child.end_point,
+                    }
+                )
                 comment_buffer = []
             else:
                 comment_buffer = []
@@ -47,7 +49,7 @@ class RubyParser(LanguageParser):
 
     @staticmethod
     def get_definitions(tree, blob: str) -> List[Dict[str, Any]]:
-        if 'ERROR' in set([child.type for child in tree.root_node.children]):
+        if 'ERROR' in {child.type for child in tree.root_node.children}:
             return []
 
         definitions = []

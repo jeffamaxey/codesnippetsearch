@@ -22,7 +22,7 @@ class JavaParser(LanguageParser):
                             continue
 
                         docstring = ''
-                        if idx - 1 >= 0 and child.children[idx - 1].type == 'comment':
+                        if idx >= 1 and child.children[idx - 1].type == 'comment':
                             docstring = match_from_span(child.children[idx - 1], blob)
                             docstring = strip_c_style_comment_delimiters(docstring)
                         docstring_summary = get_docstring_summary(docstring)
@@ -31,17 +31,19 @@ class JavaParser(LanguageParser):
                         if metadata['identifier'] in JavaParser.BLACKLISTED_FUNCTION_NAMES:
                             continue
 
-                        definitions.append({
-                            'type': node.type,
-                            'identifier': '{}.{}'.format(class_identifier, metadata['identifier']),
-                            'parameters': metadata['parameters'],
-                            'function': match_from_span(node, blob),
-                            'function_tokens': tokenize_code(node, blob),
-                            'docstring': docstring,
-                            'docstring_summary': docstring_summary,
-                            'start_point': node.start_point,
-                            'end_point': node.end_point
-                        })
+                        definitions.append(
+                            {
+                                'type': node.type,
+                                'identifier': f"{class_identifier}.{metadata['identifier']}",
+                                'parameters': metadata['parameters'],
+                                'function': match_from_span(node, blob),
+                                'function_tokens': tokenize_code(node, blob),
+                                'docstring': docstring,
+                                'docstring_summary': docstring_summary,
+                                'start_point': node.start_point,
+                                'end_point': node.end_point,
+                            }
+                        )
         return definitions
 
     @staticmethod
@@ -66,9 +68,11 @@ class JavaParser(LanguageParser):
     @staticmethod
     def is_method_body_empty(node):
         for c in node.children:
-            if c.type in {'method_body', 'constructor_body'}:
-                if c.start_point[0] == c.end_point[0]:
-                    return True
+            if (
+                c.type in {'method_body', 'constructor_body'}
+                and c.start_point[0] == c.end_point[0]
+            ):
+                return True
 
     @staticmethod
     def get_function_metadata(function_node, blob: str) -> Dict[str, str]:
@@ -82,8 +86,10 @@ class JavaParser(LanguageParser):
             if n.type == 'identifier':
                 metadata['identifier'] = match_from_span(n, blob).strip('(')
             elif n.type == 'formal_parameters':
-                for fp_child in n.children:
-                    if fp_child.type == 'formal_parameter':
-                        parameters.append(match_from_span(fp_child, blob))
+                parameters.extend(
+                    match_from_span(fp_child, blob)
+                    for fp_child in n.children
+                    if fp_child.type == 'formal_parameter'
+                )
         metadata['parameters'] = ' '.join(parameters)
         return metadata

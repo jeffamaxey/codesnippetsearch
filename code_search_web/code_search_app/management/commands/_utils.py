@@ -13,8 +13,8 @@ def download_repository(organization: str, name: str, target_dir):
         'git',
         'clone',
         '--depth=1',
-        'https://github.com/{}/{}.git'.format(organization, name),
-        target_dir
+        f'https://github.com/{organization}/{name}.git',
+        target_dir,
     ]
     subprocess.run(cmd, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 

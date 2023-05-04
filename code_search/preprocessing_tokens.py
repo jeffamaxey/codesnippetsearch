@@ -14,13 +14,17 @@ CODE_PUNCTUATION = set('(){}[].:=,;$')
 def is_comment_token(language: str, token: str) -> bool:
     len_token = len(token)
 
-    if language in ['python', 'ruby', 'php'] and len_token >= 1 and token.startswith('#'):
+    if (
+        language in {'python', 'ruby', 'php'}
+        and len_token >= 1
+        and token.startswith('#')
+    ):
         return True
-    if language in ['java', 'javascript', 'go', 'php'] \
-            and len_token >= 2 and (token.startswith('//') or token.startswith('/*')):
-        return True
-
-    return False
+    return bool(
+        language in {'java', 'javascript', 'go', 'php'}
+        and len_token >= 2
+        and (token.startswith('//') or token.startswith('/*'))
+    )
 
 
 def remove_inline_comments(language: str, code_tokens: List[str]) -> List[str]:

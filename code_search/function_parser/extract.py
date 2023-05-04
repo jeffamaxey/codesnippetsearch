@@ -58,7 +58,7 @@ class DirectoryCodeDocumentsExtractor:
 
             tree = self.parser.parse(blob.encode())
             return self.language_parser.get_definitions(tree, blob)
-        except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError, ValueError, OSError) as e:
+        except (ValueError, OSError) as e:
             print(e)
             return None
 

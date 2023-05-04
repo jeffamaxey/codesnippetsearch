@@ -14,8 +14,9 @@ from code_search.preprocessing_tokens import preprocess_code_tokens, preprocess_
 
 
 def get_query_tokens(docstring_tokens: List[str], identifier: str):
-    query_tokens = list(utils.flatten(preprocess_query_tokens(docstring_tokens)))
-    if len(query_tokens) > 0:
+    if query_tokens := list(
+        utils.flatten(preprocess_query_tokens(docstring_tokens))
+    ):
         return query_tokens
     elif identifier and len(identifier) >= shared.MIN_FUNC_NAME_QUERY_LENGTH:
         return extract_sub_tokens(identifier)
@@ -63,10 +64,10 @@ def pad_encode_query(data_manager: DataManager, query: str, max_query_seq_length
 
 def pad_encode_code_tokens(data_manager: DataManager, tokens: List[str], language: str, max_code_seq_length: int):
     return pad_encode_seqs(
-        (_ for _ in [tokens]),
+        iter([tokens]),
         max_code_seq_length,
         data_manager.get_language_vocabulary(language),
-        functools.partial(preprocess_code_tokens, language)
+        functools.partial(preprocess_code_tokens, language),
     )
 
 
